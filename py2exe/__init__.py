@@ -19,10 +19,14 @@ from argparse import Namespace
 from . import runtime
 from .version import __version__
 
+from .patch_distutils import patch_distutils
+
 is_64bits = sys.maxsize > 2**32
 if not is_64bits:
     import warnings
     warnings.warn(DEPRECATION_MESSAGE_WIN32, DeprecationWarning, stacklevel=2)
+
+patch_distutils()
 
 
 def _fixup_version_info(version_info):
@@ -43,7 +47,7 @@ def _fixup_version_info(version_info):
     return None
 
 
-def freeze(console=[], windows=[], data_files=None, zipfile="library.zip", options={}, version_info={}):
+def freeze(console=[], windows=[], service=[], data_files=None, zipfile="library.zip", options={}, version_info={}):
     """Create a frozen executable from the passed Python script(s).
 
     Arguments:
@@ -160,6 +164,11 @@ def freeze(console=[], windows=[], data_files=None, zipfile="library.zip", optio
         target.exe_type = "windows_exe"
         target.version_info = _fixup_version_info(getattr(target, "version_info", None) or version_info)
 
+    service_targets = runtime.fixup_targets(service, "modules")
+    for target in service_targets:
+        target.exe_type = "service"
+        target.version_info = _fixup_version_info(getattr(target, "version_info", None) or version_info)
+
     # support the old dictionary structure with a global 'py2exe' key
     if 'py2exe' in options:
         options = options['py2exe']
@@ -175,7 +184,7 @@ def freeze(console=[], windows=[], data_files=None, zipfile="library.zip", optio
                         bundle_files = options.get("bundle_files", 3),
 
                         script = console_targets + windows_targets,
-                        service = [],
+                        service = service_targets,
                         com_servers = [],
 
                         destdir = options.get("dist_dir", "dist"),
