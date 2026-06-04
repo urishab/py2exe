@@ -9,6 +9,7 @@ enabled_tests.txt
 
 /build
 /dist
+/tests/functional/service_test/dist/*
 /*.egg-info
 .*
 !.travis.yml
