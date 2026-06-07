@@ -51,6 +51,8 @@ def freeze(console=[], windows=[], service=[], data_files=None, zipfile="library
             as console (CLI) executables. See below for the target dict syntax.
         windows (list of dict): paths of the Python files that will be frozen
             as windows (GUI) executables. See below for the target dict syntax.
+        service (list of dict): module names and options for Windows service
+            executables. See below for the target dict syntax.
         data_files (list): non-Python files that have to be added in the frozen
             bundle. Each element of the list is a tuple containing the destination
             path in the bundle and the source path of the data files.
@@ -76,6 +78,15 @@ def freeze(console=[], windows=[], service=[], data_files=None, zipfile="library
             Other files added in the bundle.
         version_info (dict): optionally specifies version information for a given binary.
             Supported values are listed below.
+
+    Target dictionaries (to be used for `service`):
+        modules (list or str): one or more Python module names that expose service
+            classes (classes with `_svc_name_`).
+        cmdline_style (str): service command-line behavior. Supported values are
+            `py2exe`, `pywin32`, and `custom`. Default is `py2exe`.
+        All other target keys are the same as `console`/`windows` targets
+            (for example `dest_base`, `icon_resources`, `other_resources`,
+            `version_info`).
 
     Options (`options`):
         includes (list): list of modules to include in the bundle.
