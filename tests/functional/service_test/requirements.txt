@@ -1,2 +1,2 @@
-pypiwin32==223
-pywin32==311
+pypiwin32
+pywin32
