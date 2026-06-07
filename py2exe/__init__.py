@@ -83,10 +83,12 @@ def freeze(console=[], windows=[], service=[], data_files=None, zipfile="library
         modules (list or str): one or more Python module names that expose service
             classes (classes with `_svc_name_`).
         cmdline_style (str): service command-line behavior. Supported values are
-            `py2exe`, `pywin32`, and `custom`. Default is `py2exe`.
-        All other target keys are the same as `console`/`windows` targets
-            (for example `dest_base`, `icon_resources`, `other_resources`,
-            `version_info`).
+            `py2exe` (default; legacy py2exe-style install/remove command
+            handling), `pywin32` (uses `win32serviceutil.HandleCommandLine`; one
+            service class), and `custom` (calls module-level
+            `HandleCommandLine()`; one service module).
+        other_target_keys (note): same as `console`/`windows` targets (for example `dest_base`,
+            `icon_resources`, `other_resources`, `version_info`).
 
     Options (`options`):
         includes (list): list of modules to include in the bundle.

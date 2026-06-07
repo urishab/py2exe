@@ -38,7 +38,8 @@ Target dictionaries (to be used for `console` or `windows`):
 
 Target dictionaries (to be used for `service`): 
  - <b>`modules`</b> (list or str):  one or more Python module names that expose service  classes (classes with `_svc_name_`). 
- - <b>`cmdline_style`</b> (str):  service command-line behavior. Supported values are  `py2exe`, `pywin32`, and `custom`. Default is `py2exe`. All other target keys are the same as `console`/`windows` targets  (for example `dest_base`, `icon_resources`, `other_resources`,  `version_info`). 
+ - <b>`cmdline_style`</b> (str):  service command-line behavior. Supported values are  `py2exe` (default; legacy py2exe-style install/remove command  handling), `pywin32` (uses `win32serviceutil.HandleCommandLine`; one  service class), and `custom` (calls module-level  `HandleCommandLine()`; one service module). 
+ - <b>`other_target_keys`</b> (note):  same as `console`/`windows` targets (for example `dest_base`,  `icon_resources`, `other_resources`, `version_info`). 
 
 Options (`options`): 
  - <b>`includes`</b> (list):  list of modules to include in the bundle. 
