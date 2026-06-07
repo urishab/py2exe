@@ -32,4 +32,18 @@ Start-Sleep -Seconds 2
 Invoke-ServiceStep -StepName "stop" -Action "stop"
 Invoke-ServiceStep -StepName "remove" -Action "remove"
 
+$logPath = Join-Path (Split-Path -Parent $ExecutablePath) "minimal_service.log"
+if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) {
+    Write-Host "service_test: log file not found: $logPath"
+    exit 1
+}
+
+$logLines = Get-Content -LiteralPath $logPath | ForEach-Object { $_.Trim() }
+if ((-not ($logLines -contains "hello")) -or (-not ($logLines -contains "goodbye"))) {
+    Write-Host "service_test: log validation failed in $logPath"
+    exit 1
+}
+
+Write-Host "service_test: log validation passed"
+
 exit 0
