@@ -247,11 +247,13 @@ def hook__socket(finder, module):
         finder.import_hook("imp")
 
 def hook_pyphen(finder, module):
-    """pyphen locates its dictionary files via importlib.resources or __file__,
-    neither of which works inside a frozen library.zip.
+    """pyphen locates its dictionary files via importlib.resources, which
+    doesn't work inside a frozen library.zip.
     This hook copies hyph_*.dic files next to the executable and patches
-    pyphen.dictionaries to resolve from there at runtime.
+    pyphen's dictionaries assignment via AST so it resolves to the correct
+    directory at runtime.
     """
+    import ast
     import pyphen
     import glob as _glob
     DEST_DIR = "pyphenDictionaries"
@@ -261,17 +263,35 @@ def hook_pyphen(finder, module):
             os.path.join(DEST_DIR, os.path.basename(dic_file)),
             dic_file,
         )
-    finder.add_bootcode("""
-def _patch_pyphen():
-    import pyphen
-    import os
-    import sys
-    from pathlib import Path
-    pyphen.dictionaries = Path(os.path.dirname(sys.executable)) / "pyphenDictionaries"
 
-_patch_pyphen()
-del _patch_pyphen
-""")
+    tree = ast.parse(module.__source__)
+    tree.body.insert(0, ast.parse("import os").body[0])
+    tree.body.insert(0, ast.parse("import sys").body[0])
+
+    class _PatchDictionaries(ast.NodeTransformer):
+        rewritten = False
+
+        def visit_Try(self, node):
+            first = node.body[0] if node.body else None
+            if (
+                isinstance(first, ast.Assign)
+                and len(first.targets) == 1
+                and getattr(first.targets[0], "id", None) == "dictionaries"
+            ):
+                self.rewritten = True
+                return ast.parse(
+                    f"dictionaries = Path(os.path.dirname(sys.executable)) / {DEST_DIR!r}"
+                ).body[0]
+            return self.generic_visit(node)
+
+    transformer = _PatchDictionaries()
+    patched_tree = ast.fix_missing_locations(transformer.visit(tree))
+    if not transformer.rewritten:
+        raise RuntimeError(
+            "hook_pyphen: failed to rewrite dictionaries assignment in pyphen.__init__. "
+            "The upstream module may have changed its layout."
+        )
+    module.__code_object__ = compile(patched_tree, module.__file__, "exec", optimize=module.__optimize__)
 
 
 def hook_pyreadline(finder, module):

@@ -88,10 +88,10 @@ if __name__ == "__main__":
           maintainer_email="alby128@gmail.com",
           url="http://www.py2exe.org/",
           license="MIT/X11",
-          setup_requires=["wheel", "cachetools", "pefile", "packaging"],
-          install_requires=["cachetools", "pefile"],
+          setup_requires=["wheel", "cachetools", "packaging", "pefile"],
+          install_requires=["cachetools", "packaging", "pefile"],
           platforms="Windows",
-          python_requires='>=3.9, <3.15',
+          python_requires='>=3.10, <3.15',
 
           classifiers=[
               "Development Status :: 4 - Beta",
@@ -101,7 +101,6 @@ if __name__ == "__main__":
               "Operating System :: Microsoft :: Windows",
               "Programming Language :: C",
               "Programming Language :: Python :: 3",
-              "Programming Language :: Python :: 3.9",
               "Programming Language :: Python :: 3.10",
               "Programming Language :: Python :: 3.11",
               "Programming Language :: Python :: 3.12",
