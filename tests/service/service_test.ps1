@@ -1,9 +1,45 @@
 param(
-    [string]$ExecutablePath = (Join-Path $PSScriptRoot "dist\service_test.exe")
+    [string]$ExecutablePath = (Join-Path $PSScriptRoot "dist\service_test.exe"),
+    [string]$PythonExecutable = "python"
 )
 
+function Invoke-CheckedCommand {
+    param(
+        [string]$StepName,
+        [scriptblock]$Command
+    )
+
+    Write-Host "service_test: running '$StepName'"
+    & $Command
+    $stepExitCode = $LASTEXITCODE
+    Write-Host "service_test: '$StepName' exited with $stepExitCode"
+
+    if ($stepExitCode -ne 0) {
+        exit $stepExitCode
+    }
+}
+
+$requirementsPath = Join-Path $PSScriptRoot "requirements.txt"
+$freezeScriptPath = Join-Path $PSScriptRoot "freeze.py"
+
+Push-Location $PSScriptRoot
+try {
+    if (Test-Path -LiteralPath $requirementsPath -PathType Leaf) {
+        Invoke-CheckedCommand -StepName "install dependencies" -Command {
+            & $PythonExecutable -m pip install -r $requirementsPath
+        }
+    }
+
+    Invoke-CheckedCommand -StepName "freeze service executable" -Command {
+        & $PythonExecutable $freezeScriptPath
+    }
+}
+finally {
+    Pop-Location
+}
+
 if (-not (Test-Path -LiteralPath $ExecutablePath -PathType Leaf)) {
-    Write-Host "Executable not found: $ExecutablePath"
+    Write-Host "service_test: executable not found after freeze: $ExecutablePath"
     exit 1
 }
 
