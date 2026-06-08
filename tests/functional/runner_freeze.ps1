@@ -23,25 +23,16 @@ $teststoexecute | ForEach-Object {
         $testexe = $testname
     }
 
-    $scriptRunner = Join-Path ".." ($testexe + ".ps1")
-    if (Test-Path -LiteralPath $scriptRunner -PathType Leaf) {
-        $exePath = Join-Path (Get-Location) ($testexe + ".exe")
-        Write-Host "Using script runner $scriptRunner for test $testname"
-        powershell -NoProfile -ExecutionPolicy Bypass -File $scriptRunner -ExecutablePath $exePath
-        $testfailed = $LASTEXITCODE
-        Write-Host "Script runner for test $testname exited with $testfailed"
-    } else {
-        ForEach ($executablename in Get-ChildItem -path "." -name -file | Where-Object {$_ -match "^$testexe(_[0-9])?\.exe$"}) {
-            & ".\$executablename"
-            $testfailed = $LastExitcode
-            if ($executablename.TrimEnd(".exe") -eq $testname) {
-                Write-Host "$testname exited with $testfailed"
-            } else {
-                Write-Host "Executable $executablename  for test $testname exited with $testfailed"
-            }
-            if ($testfailed -ne 0 ) {
-                break
-            }
+    ForEach ($executablename in Get-ChildItem -path "." -name -file | Where-Object {$_ -match "^$testexe(_[0-9])?\.exe$"}) {
+        & ".\$executablename"
+        $testfailed = $LastExitcode
+        if ($executablename.TrimEnd(".exe") -eq $testname) {
+            Write-Host "$testname exited with $testfailed"
+        } else {
+            Write-Host "Executable $executablename  for test $testname exited with $testfailed"
+        }
+        if ($testfailed -ne 0 ) {
+            break
         }
     }
     cd ..
