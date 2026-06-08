@@ -1,85 +1,86 @@
-param(
-    [string]$ExecutablePath = (Join-Path $PSScriptRoot "dist\service_test.exe"),
-    [string]$PythonExecutable = "python"
-)
+$exitCode = 0
 
-function Invoke-CheckedCommand {
-    param(
-        [string]$StepName,
-        [scriptblock]$Command
-    )
-
-    Write-Host "service_test: running '$StepName'"
-    & $Command
-    $stepExitCode = $LASTEXITCODE
-    Write-Host "service_test: '$StepName' exited with $stepExitCode"
-
-    if ($stepExitCode -ne 0) {
-        exit $stepExitCode
-    }
-}
-
-$requirementsPath = Join-Path $PSScriptRoot "requirements.txt"
-$freezeScriptPath = Join-Path $PSScriptRoot "freeze.py"
-
-Push-Location $PSScriptRoot
 try {
-    if (Test-Path -LiteralPath $requirementsPath -PathType Leaf) {
-        Invoke-CheckedCommand -StepName "install dependencies" -Command {
-            & $PythonExecutable -m pip install -r $requirementsPath
-        }
+    # Install dependencies
+    Write-Host "Installing dependencies..."
+    & python -m pip install -r "requirements.txt"
+    if ($LASTEXITCODE -ne 0) {
+        $exitCode = $LASTEXITCODE
+        throw "Failed to install dependencies"
     }
 
-    Invoke-CheckedCommand -StepName "freeze service executable" -Command {
-        & $PythonExecutable $freezeScriptPath
+    # Freeze service
+    Write-Host "Freezing service..."
+    & python "freeze.py"
+    if ($LASTEXITCODE -ne 0) {
+        $exitCode = $LASTEXITCODE
+        throw "Failed to freeze service"
+    }
+
+    # Check executable exists
+    if (-not (Test-Path -LiteralPath "dist\service_test.exe" -PathType Leaf)) {
+        $exitCode = 1
+        throw "Executable not found: dist\service_test.exe"
+    }
+
+    # Run service tests
+    Write-Host "Running service install..."
+    & "dist\service_test.exe" install
+    if ($LASTEXITCODE -ne 0) {
+        $exitCode = $LASTEXITCODE
+        throw "Service install failed"
+    }
+
+    Write-Host "Running service start..."
+    & "dist\service_test.exe" start
+    if ($LASTEXITCODE -ne 0) {
+        $exitCode = $LASTEXITCODE
+        throw "Service start failed"
+    }
+
+    Start-Sleep -Seconds 2
+
+    Write-Host "Running service stop..."
+    & "dist\service_test.exe" stop
+    if ($LASTEXITCODE -ne 0) {
+        $exitCode = $LASTEXITCODE
+        throw "Service stop failed"
+    }
+
+    Write-Host "Running service remove..."
+    & "dist\service_test.exe" remove
+    if ($LASTEXITCODE -ne 0) {
+        $exitCode = $LASTEXITCODE
+        throw "Service remove failed"
+    }
+
+    # Validate log
+    if (-not (Test-Path -LiteralPath "dist\minimal_service.log" -PathType Leaf)) {
+        $exitCode = 1
+        throw "Log file not found: dist\minimal_service.log"
+    }
+
+    $logLines = Get-Content -LiteralPath "dist\minimal_service.log" | ForEach-Object { $_.Trim() }
+    if ((-not ($logLines -contains "hello")) -or (-not ($logLines -contains "goodbye"))) {
+        $exitCode = 1
+        throw "Log validation failed"
+    }
+
+    Write-Host "Test passed"
+}
+catch {
+    Write-Host "Test failed"
+    Write-Host "Error: $_"
+    if ($exitCode -eq 0) {
+        $exitCode = 1
     }
 }
 finally {
-    Pop-Location
+    Write-Host "Removing test dependencies..."
+    & python -m pip uninstall -r "requirements.txt" -y
+
+    Write-Host "Removing dist folder..."
+    & Remove-Item -LiteralPath "dist" -Force -Recurse
 }
 
-if (-not (Test-Path -LiteralPath $ExecutablePath -PathType Leaf)) {
-    Write-Host "service_test: executable not found after freeze: $ExecutablePath"
-    exit 1
-}
-
-function Invoke-ServiceStep {
-    param(
-        [string]$StepName,
-        [string]$Action
-    )
-
-    Write-Host "service_test: running '$StepName'"
-    & $ExecutablePath $Action
-    $stepExitCode = $LASTEXITCODE
-    Write-Host "service_test: '$StepName' exited with $stepExitCode"
-
-    if ($stepExitCode -ne 0) {
-        exit $stepExitCode
-    }
-}
-
-Invoke-ServiceStep -StepName "install" -Action "install"
-Invoke-ServiceStep -StepName "start" -Action "start"
-
-# Give SCM a moment before issuing stop.
-Start-Sleep -Seconds 2
-
-Invoke-ServiceStep -StepName "stop" -Action "stop"
-Invoke-ServiceStep -StepName "remove" -Action "remove"
-
-$logPath = Join-Path (Split-Path -Parent $ExecutablePath) "minimal_service.log"
-if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) {
-    Write-Host "service_test: log file not found: $logPath"
-    exit 1
-}
-
-$logLines = Get-Content -LiteralPath $logPath | ForEach-Object { $_.Trim() }
-if ((-not ($logLines -contains "hello")) -or (-not ($logLines -contains "goodbye"))) {
-    Write-Host "service_test: log validation failed in $logPath"
-    exit 1
-}
-
-Write-Host "service_test: log validation passed"
-
-exit 0
+exit $exitCode
